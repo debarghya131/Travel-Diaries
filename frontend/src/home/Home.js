@@ -1,9 +1,12 @@
 import { Button, Typography } from "@mui/material";
 import { Box } from "@mui/system";
 import React from "react";
+import { useAuth } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
 
 const Home = () => {
+  const { isSignedIn } = useAuth();
+
   return (
     <Box width="100%">
       <Box
@@ -72,7 +75,7 @@ const Home = () => {
         >
           <Button
             LinkComponent={Link}
-            to="/add"
+            to={isSignedIn ? "/add" : "/auth"}
             variant="outlined"
             sx={{
               borderColor: "#233142",
