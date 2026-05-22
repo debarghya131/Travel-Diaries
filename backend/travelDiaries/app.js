@@ -18,10 +18,24 @@ const envFile = envPaths.find((envPath) => fs.existsSync(envPath));
 dotenv.config(envFile ? { path: envFile } : undefined);
 const port = process.env.PORT || 5000;
 const mongoUrl = process.env.MONGODB_URL;
+const corsOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 // middlewares
 app.set("trust proxy", true);
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || corsOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+  })
+);
 app.use(express.json());
 app.use(clerkMiddleware());
 app.use("/user", userRouter);
