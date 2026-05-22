@@ -1,99 +1,152 @@
 import axios from "axios";
-export const getAllPosts = async () => {
-  const res = await axios.get("/posts");
-  if (res.status !== 200) {
-    return console.log("Some Error Occurred");
-  }
 
-  const data = res.data;
-  return data;
+const defaultApiBaseUrl =
+  typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.hostname}:5000`
+    : "http://localhost:5000";
+
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || defaultApiBaseUrl,
+});
+
+const toApiError = (error, fallbackMessage) => {
+  const message = error?.response?.data?.message || fallbackMessage;
+  return new Error(message);
+};
+
+export const getAllPosts = async () => {
+  try {
+    const res = await api.get("/posts");
+    if (res.status !== 200) {
+      throw new Error("Some error occurred");
+    }
+
+    const data = res.data;
+    return data;
+  } catch (error) {
+    throw toApiError(error, "Unable to load diaries.");
+  }
 };
 
 export const sendAuthRequest = async (signup, data) => {
-  const res = await axios
-    .post(`/user/${signup ? "signup" : "login"}/`, {
+  try {
+    const res = await api.post(`/user/${signup ? "signup" : "login"}/`, {
       name: data.name ? data.name : "",
       email: data.email,
       password: data.password,
-    })
-    .catch((err) => console.log(err));
+    });
 
-  if (res.status !== 200 && res.status !== 201) {
-    return console.log("Unable to Authenticate");
+    if (res.status !== 200 && res.status !== 201) {
+      throw new Error("Unable to authenticate");
+    }
+    const resData = await res.data;
+    return resData;
+  } catch (error) {
+    throw toApiError(error, "Unable to authenticate.");
   }
-  const resData = await res.data;
-  return resData;
 };
 
 export const addPost = async (data) => {
-  const res = await axios
-    .post("/posts/", {
+  try {
+    const res = await api.post("/posts/", {
       title: data.title,
       description: data.description,
       location: data.location,
       image: data.imageUrl,
       date: data.date,
       user: localStorage.getItem("userId"),
-    })
-    .catch((err) => console.log(err));
+    });
 
-  if (res.status !== 201) {
-    return console.log("Error Occurred");
+    if (res.status !== 201) {
+      throw new Error("Error occurred");
+    }
+
+    const resData = await res.data;
+    return resData;
+  } catch (error) {
+    throw toApiError(error, "Unable to add diary.");
   }
-
-  const resData = await res.data;
-  return resData;
 };
 
 export const getPostDetails = async (id) => {
-  const res = await axios.get(`/posts/${id}`).catch((err) => console.log(err));
-  if (res.status !== 200) {
-    return console.log("Unable to fetch diary");
-  }
+  try {
+    const res = await api.get(`/posts/${id}`);
+    if (res.status !== 200) {
+      throw new Error("Unable to fetch diary");
+    }
 
-  const resData = await res.data;
-  return resData;
+    const resData = await res.data;
+    return resData;
+  } catch (error) {
+    throw toApiError(error, "Unable to fetch diary.");
+  }
 };
 
 export const postUpdate = async (data, id) => {
-  const res = await axios
-    .put(`/posts/${id}`, {
+  try {
+    const res = await api.put(`/posts/${id}`, {
       title: data.title,
       description: data.description,
       location: data.location,
       image: data.imageUrl,
-    })
-    .catch((err) => console.log(err));
+    });
 
-  if (res.status !== 200) {
-    return console.log("Unable to udpate");
+    if (res.status !== 200) {
+      throw new Error("Unable to update");
+    }
+
+    const resData = await res.data;
+    return resData;
+  } catch (error) {
+    throw toApiError(error, "Unable to update diary.");
   }
-
-  const resData = await res.data;
-  return resData;
 };
 
 export const postDelete = async (id) => {
-  const res = await axios
-    .delete(`/posts/${id}`)
-    .catch((err) => console.log(err));
+  try {
+    const res = await api.delete(`/posts/${id}`);
 
-  if (res.status !== 200) {
-    return console.log("Unable to delete");
+    if (res.status !== 200) {
+      throw new Error("Unable to delete");
+    }
+
+    const resData = await res.data;
+    return resData;
+  } catch (error) {
+    throw toApiError(error, "Unable to delete diary.");
   }
-
-  const resData = await res.data;
-  return resData;
 };
 
 export const getUserDetails = async () => {
-  const id = localStorage.getItem("userId");
-  const res = await axios.get(`/user/${id}`).catch((err) => console.log(err));
+  try {
+    const id = localStorage.getItem("userId");
+    const res = await api.get(`/user/${id}`);
 
-  if (res.status !== 200) {
-    return console.log("No user found");
+    if (res.status !== 200) {
+      throw new Error("No user found");
+    }
+
+    const resData = await res.data;
+    return resData;
+  } catch (error) {
+    throw toApiError(error, "Unable to load profile.");
   }
+};
 
-  const resData = await res.data;
-  return resData;
+export const syncClerkUser = async (data, token) => {
+  try {
+    const res = await api.post("/user/sync", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.status !== 200) {
+      throw new Error("Unable to sync Clerk user");
+    }
+
+    return res.data;
+  } catch (error) {
+    throw toApiError(error, "Unable to sync Clerk user.");
+  }
 };

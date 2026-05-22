@@ -1,8 +1,55 @@
-import mongoose, { mongo, startSession } from "mongoose";
-import Post from "../models/Post";
+import mongoose from "mongoose";
+import {
+  applyRateLimit,
+  createPostLimiter,
+  readLimiter,
+  updatePostLimiter,
+  writeLimiter,
+} from "../lib/arcjet";
+import Post, { POST_FIELD_LIMITS } from "../models/Post";
 import User from "../models/User";
 
+const isInvalidObjectId = (id) => !id || !mongoose.Types.ObjectId.isValid(id);
+const isInvalidPostPayload = ({ title, description, location, image, date, user }) =>
+  !title ||
+  title.trim() === "" ||
+  title.length > POST_FIELD_LIMITS.title ||
+  !description ||
+  description.trim() === "" ||
+  description.length > POST_FIELD_LIMITS.description ||
+  !location ||
+  location.trim() === "" ||
+  location.length > POST_FIELD_LIMITS.location ||
+  !image ||
+  image.trim() === "" ||
+  !date ||
+  !user;
+
+const isInvalidPostUpdatePayload = ({ title, description, location, image }) =>
+  !title ||
+  title.trim() === "" ||
+  title.length > POST_FIELD_LIMITS.title ||
+  !description ||
+  description.trim() === "" ||
+  description.length > POST_FIELD_LIMITS.description ||
+  !location ||
+  location.trim() === "" ||
+  location.length > POST_FIELD_LIMITS.location ||
+  !image ||
+  image.trim() === "";
+
 export const getAllPosts = async (req, res) => {
+  const allowed = await applyRateLimit(
+    readLimiter,
+    req,
+    res,
+    "Too many diary requests. Please slow down."
+  );
+
+  if (!allowed) {
+    return;
+  }
+
   let posts;
   try {
     posts = await Post.find().populate("user");
@@ -19,19 +66,20 @@ export const getAllPosts = async (req, res) => {
 export const addPost = async (req, res) => {
   const { title, description, location, date, image, user } = req.body;
 
-  if (
-    !title &&
-    title.trim() === "" &&
-    !description &&
-    description.trim() === "" &&
-    !location &&
-    location.trim() === "" &&
-    !date &&
-    !user &&
-    !image &&
-    image.trim() === ""
-  ) {
+  if (isInvalidPostPayload({ title, description, location, date, image, user })) {
     return res.status(422).json({ message: "Invalid Data" });
+  }
+
+  const allowed = await applyRateLimit(
+    createPostLimiter,
+    req,
+    res,
+    "You can create only 2 posts per day.",
+    { userId: String(user) }
+  );
+
+  if (!allowed) {
+    return;
   }
 
   let existingUser;
@@ -74,14 +122,30 @@ export const addPost = async (req, res) => {
 };
 
 export const getPostById = async (req, res) => {
+  const allowed = await applyRateLimit(
+    readLimiter,
+    req,
+    res,
+    "Too many diary requests. Please slow down."
+  );
+
+  if (!allowed) {
+    return;
+  }
+
   const id = req.params.id;
+
+  if (isInvalidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid post id" });
+  }
 
   let post;
 
   try {
     post = await Post.findById(id);
   } catch (err) {
-    return console.log(err);
+    console.log(err);
+    return res.status(500).json({ message: "Unable to fetch post" });
   }
   if (!post) {
     return res.status(404).json({ message: "No post found" });
@@ -93,20 +157,38 @@ export const updatePost = async (req, res) => {
   const id = req.params.id;
   const { title, description, location, image } = req.body;
 
-  if (
-    !title &&
-    title.trim() === "" &&
-    !description &&
-    description.trim() === "" &&
-    !location &&
-    location.trim() === "" &&
-    !image &&
-    image.trim() === ""
-  ) {
+  if (isInvalidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid post id" });
+  }
+
+  if (isInvalidPostUpdatePayload({ title, description, location, image })) {
     return res.status(422).json({ message: "Invalid Data" });
   }
 
   let post;
+  try {
+    post = await Post.findById(id);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Unable to fetch post" });
+  }
+
+  if (!post) {
+    return res.status(404).json({ message: "Post not found" });
+  }
+
+  const allowed = await applyRateLimit(
+    updatePostLimiter,
+    req,
+    res,
+    "You can update posts only 2 times per day.",
+    { userId: String(post.user) }
+  );
+
+  if (!allowed) {
+    return;
+  }
+
   try {
     post = await Post.findByIdAndUpdate(id, {
       title,
@@ -115,31 +197,55 @@ export const updatePost = async (req, res) => {
       location,
     });
   } catch (err) {
-    return console.log(err);
+    console.log(err);
+    return res.status(500).json({ message: "Unable to update post" });
   }
 
   if (!post) {
-    return res.status(500).json({ message: "Unable to update" });
+    return res.status(404).json({ message: "Post not found" });
   }
   return res.status(200).json({ message: "Updated Successfully" });
 };
 
 export const deletePost = async (req, res) => {
+  const allowed = await applyRateLimit(
+    writeLimiter,
+    req,
+    res,
+    "Too many delete requests. Please wait a moment."
+  );
+
+  if (!allowed) {
+    return;
+  }
+
   const id = req.params.id;
+
+  if (isInvalidObjectId(id)) {
+    return res.status(400).json({ message: "Invalid post id" });
+  }
+
   let post;
   try {
     const session = await mongoose.startSession();
     session.startTransaction();
     post = await Post.findById(id).populate("user");
+    if (!post) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: "Post not found" });
+    }
     post.user.posts.pull(post);
     await post.user.save({ session });
     post = await Post.findByIdAndRemove(id);
-    session.commitTransaction();
+    await session.commitTransaction();
+    session.endSession();
   } catch (err) {
-    return console.log(err);
+    console.log(err);
+    return res.status(500).json({ message: "Unable to delete post" });
   }
   if (!post) {
-    return res.status(500).json({ message: "Unable to delete" });
+    return res.status(404).json({ message: "Post not found" });
   }
 
   return res.status(200).json({ message: "Deleted Successfully" });

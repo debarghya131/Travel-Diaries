@@ -1,108 +1,82 @@
-import React, { useState } from "react";
-import { Box, Button, FormLabel, TextField, Typography } from "@mui/material";
-import { sendAuthRequest } from "../api-helpers/helpers";
-import { useDispatch } from "react-redux";
-import { authActions } from "../store";
-import { useNavigate } from "react-router-dom";
-const Auth = () => {
-  const naviagte = useNavigate();
-  const dispatch = useDispatch();
-  const [isSignup, setIsSignup] = useState(true);
-  const onResReceived = (data) => {
-    if (isSignup) {
-      localStorage.setItem("userId", data.user._id);
-    } else {
-      localStorage.setItem("userId", data.id);
-    }
-    dispatch(authActions.login());
-    naviagte("/diaries");
-  };
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log(inputs);
+import React from "react";
+import { SignIn, useAuth } from "@clerk/clerk-react";
+import { Box } from "@mui/material";
+import { Navigate } from "react-router-dom";
 
-    if (isSignup) {
-      sendAuthRequest(true, inputs)
-        .then(onResReceived)
-        .catch((err) => console.log(err));
-    } else {
-      sendAuthRequest(false, inputs)
-        .then(onResReceived)
-        .catch((err) => console.log(err));
-    }
-  };
-  const [inputs, setInputs] = useState({ name: "", email: "", password: "" });
-  const handleChange = (e) => {
-    setInputs((prevState) => ({
-      ...prevState,
-      [e.target.name]: e.target.value,
-    }));
-  };
+const Auth = () => {
+  const { isSignedIn } = useAuth();
+
+  if (isSignedIn) {
+    return <Navigate to="/diaries" replace />;
+  }
+
   return (
     <Box
-      width="40%"
-      borderRadius={10}
-      boxShadow={"5px 5px 10px #ccc"}
-      margin="auto"
-      marginTop={10}
+      sx={{
+        minHeight: "calc(100vh - 88px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        px: 2,
+        py: { xs: 3, md: 5 },
+      }}
     >
-      <form onSubmit={handleSubmit}>
-        <Box
-          display="flex"
-          flexDirection={"column"}
-          width="60%"
-          padding={5}
-          margin="auto"
-        >
-          <Typography padding={1} variant="h4" textAlign="center">
-            {isSignup ? "Signup" : "Login"}
-          </Typography>
-          {isSignup && (
-            <>
-              <FormLabel>Name</FormLabel>
-              <TextField
-                onChange={handleChange}
-                value={inputs.name}
-                name="name"
-                required
-                margin="normal"
-              />
-            </>
-          )}
-          <FormLabel>Email</FormLabel>
-          <TextField
-            onChange={handleChange}
-            value={inputs.email}
-            name="email"
-            type="email"
-            required
-            margin="normal"
-          />
-          <FormLabel>Password</FormLabel>
-          <TextField
-            onChange={handleChange}
-            value={inputs.password}
-            name="password"
-            type="password"
-            required
-            margin="normal"
-          />
-          <Button
-            sx={{ mt: 2, borderRadius: 10 }}
-            type="submit"
-            variant="contained"
-          >
-            {isSignup ? "Signup" : "Login"}
-          </Button>
-          <Button
-            onClick={() => setIsSignup(!isSignup)}
-            sx={{ mt: 2, borderRadius: 10 }}
-            variant="outlined"
-          >
-            Change to {isSignup ? "Login" : "Signup"}
-          </Button>
-        </Box>
-      </form>
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: { xs: "360px", sm: "420px" },
+          borderRadius: { xs: 5, sm: 6 },
+          boxShadow: "0 18px 40px rgba(35, 49, 66, 0.12)",
+          bgcolor: "#fffdf8",
+          overflow: "hidden",
+        }}
+      >
+        <SignIn
+          routing="path"
+          path="/auth"
+          signUpUrl="/auth"
+          withSignUp
+          fallbackRedirectUrl="/diaries"
+          forceRedirectUrl="/diaries"
+          appearance={{
+            elements: {
+              rootBox: {
+                width: "100%",
+                display: "block",
+              },
+              cardBox: {
+                width: "100%",
+                display: "block",
+              },
+              card: {
+                width: "100%",
+                boxShadow: "none",
+                border: "none",
+                borderRadius: "0px",
+                background: "#fffdf8",
+                padding: "24px",
+              },
+              headerTitle: {
+                fontSize: "1.7rem",
+                lineHeight: "2.2rem",
+                color: "#111827",
+                textAlign: "center",
+              },
+              headerSubtitle: {
+                color: "#6b7280",
+              },
+              formButtonPrimary: {
+                backgroundColor: "#d1512d",
+                borderRadius: "999px",
+                boxShadow: "0 12px 30px rgba(209, 81, 45, 0.2)",
+              },
+              footerActionLink: {
+                color: "#d1512d",
+              },
+            },
+          }}
+        />
+      </Box>
     </Box>
   );
 };

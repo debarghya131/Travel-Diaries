@@ -1,0 +1,10 @@
+{
+  "name": "travel-diaries-backend-root",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix travelDiaries run dev",
+    "start": "npm --prefix travelDiaries run start",
+    "build": "npm --prefix travelDiaries run build",
+    "test": "npm --prefix travelDiaries run test"
+  }
+}
