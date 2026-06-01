@@ -4,7 +4,7 @@ Travel Diaries is a MERN stack web application where users can create, browse, u
 
 ## 🌐 Live Demo
 
-https://traveldiaries.debarghya.org
+https://traveldiaries.debarghya.org   👈
 
 ## 💡 Motivation
 
