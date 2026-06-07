@@ -150,3 +150,32 @@ export const syncClerkUser = async (data, token) => {
     throw toApiError(error, "Unable to sync Clerk user.");
   }
 };
+
+
+export const getWebsiteViews = async () => {
+  try {
+    const res = await api.get("/views");
+
+    if (res.status !== 200) {
+      throw new Error("Unable to load website views");
+    }
+
+    return res.data;
+  } catch (error) {
+    throw toApiError(error, "Unable to load website views.");
+  }
+};
+
+export const incrementWebsiteViews = async () => {
+  try {
+    const res = await api.post("/views");
+
+    if (res.status !== 200) {
+      throw new Error("Unable to update website views");
+    }
+
+    return res.data;
+  } catch (error) {
+    throw toApiError(error, "Unable to update website views.");
+  }
+};

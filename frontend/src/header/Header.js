@@ -1,12 +1,17 @@
-import React from "react";
-import { AppBar, Tab, Tabs, Toolbar, Box } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { AppBar, Chip, Tab, Tabs, Toolbar, Box } from "@mui/material";
 import CottageOutlinedIcon from "@mui/icons-material/CottageOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import LoginOutlinedIcon from "@mui/icons-material/LoginOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { useAuth } from "@clerk/clerk-react";
 import { Link, useLocation } from "react-router-dom";
+import {
+  getWebsiteViews,
+  incrementWebsiteViews,
+} from "../api-helpers/helpers";
 
 const guestLinks = [
   { label: "Home", to: "/", icon: <CottageOutlinedIcon fontSize="small" /> },
@@ -36,6 +41,7 @@ const loggedInLinks = [
 const Header = () => {
   const { isSignedIn } = useAuth();
   const location = useLocation();
+  const [viewCount, setViewCount] = useState(null);
   const navLinks = isSignedIn ? loggedInLinks : guestLinks;
 
   const currentPath = location.pathname.startsWith("/post/")
@@ -45,6 +51,27 @@ const Header = () => {
   const activeTab = navLinks.some((link) => link.to === currentPath)
     ? currentPath
     : false;
+
+  useEffect(() => {
+    let ignore = false;
+    const hasCountedView = sessionStorage.getItem("travelDiariesViewCounted");
+    const viewRequest = hasCountedView
+      ? getWebsiteViews()
+      : incrementWebsiteViews();
+
+    viewRequest
+      .then((data) => {
+        if (!ignore) {
+          setViewCount(data?.count ?? 0);
+          sessionStorage.setItem("travelDiariesViewCounted", "true");
+        }
+      })
+      .catch((err) => console.log(err));
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return (
     <AppBar
@@ -69,7 +96,9 @@ const Header = () => {
         <Box
           display="flex"
           alignItems="center"
+          gap={{ xs: 1, sm: 1.5 }}
           justifyContent={{ xs: "center", sm: "flex-start" }}
+          flexWrap="wrap"
         >
           <Box
             component="img"
@@ -79,6 +108,28 @@ const Header = () => {
               height: { xs: 42, sm: 48, md: 54 },
               width: "auto",
               objectFit: "contain",
+            }}
+          />
+          <Chip
+            icon={<VisibilityOutlinedIcon />}
+            label={
+              viewCount === null
+                ? "Views ..."
+                : `${viewCount.toLocaleString()} views`
+            }
+            sx={{
+              bgcolor: "#fffdf8",
+              border: "1px solid rgba(35, 49, 66, 0.14)",
+              borderRadius: "999px",
+              color: "#233142",
+              fontFamily: "Quicksand, sans-serif",
+              fontSize: { xs: "0.76rem", sm: "0.86rem" },
+              fontWeight: 700,
+              height: { xs: 30, sm: 34 },
+              "& .MuiChip-icon": {
+                color: "#d1512d",
+                fontSize: { xs: "1rem", sm: "1.1rem" },
+              },
             }}
           />
         </Box>

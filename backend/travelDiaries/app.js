@@ -6,6 +6,7 @@ import path from "path";
 import dotenv from "dotenv";
 import userRouter from "./routing/user-routes";
 import postRouter from "./routing/post-routes";
+import viewRouter from "./routing/view-routes";
 import cors from "cors";
 
 const app = express();
@@ -40,6 +41,7 @@ app.use(express.json());
 app.use(clerkMiddleware());
 app.use("/user", userRouter);
 app.use("/posts", postRouter);
+app.use("/views", viewRouter);
 
 if (!mongoUrl) {
   throw new Error("MONGODB_URL is not set. Check your backend .env file.");
