@@ -7,8 +7,9 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import { addPost } from "../api-helpers/helpers";
 import { useNavigate } from "react-router-dom";
 
@@ -24,19 +25,43 @@ const Add = () => {
     title: "",
     description: "",
     location: "",
-    imageUrl: "",
+    imageFile: null,
     date: "",
   });
+  const [imagePreview, setImagePreview] = useState("");
   const [toast, setToast] = useState({
     open: false,
     severity: "success",
     message: "",
   });
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
   const handleChange = (e) => {
     setInputs((prevState) => ({
       ...prevState,
       [e.target.name]: e.target.value,
     }));
+  };
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setInputs((prevState) => ({
+      ...prevState,
+      imageFile: file,
+    }));
+    setImagePreview(previewUrl);
   };
   const onResReceived = () => {
     setToast({
@@ -48,6 +73,16 @@ const Add = () => {
   };
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!inputs.imageFile) {
+      setToast({
+        open: true,
+        severity: "error",
+        message: "Please choose a travel photo.",
+      });
+      return;
+    }
+
     addPost(inputs)
       .then(onResReceived)
       .catch((err) => {
@@ -138,15 +173,41 @@ const Add = () => {
               },
             }}
           />
-          <FormLabel sx={{ fontFamily: "quicksand" }}>Image URL</FormLabel>
-          <TextField
-            onChange={handleChange}
-            name="imageUrl"
-            value={inputs.imageUrl}
+          <FormLabel sx={{ fontFamily: "quicksand" }}>Travel Photo</FormLabel>
+          <Button
+            component="label"
             variant="outlined"
-            size="small"
-            fullWidth
-          />
+            color="warning"
+            startIcon={<PhotoCameraIcon />}
+            sx={{
+              justifyContent: "flex-start",
+              borderRadius: 2,
+              textTransform: "none",
+              py: 1,
+            }}
+          >
+            {inputs.imageFile ? inputs.imageFile.name : "Choose photo from device"}
+            <input
+              hidden
+              accept="image/*"
+              type="file"
+              onChange={handleImageChange}
+            />
+          </Button>
+          {imagePreview && (
+            <Box
+              component="img"
+              src={imagePreview}
+              alt="Selected travel"
+              sx={{
+                width: "100%",
+                maxHeight: 260,
+                objectFit: "cover",
+                borderRadius: 2,
+                mt: 1,
+              }}
+            />
+          )}
 
           <FormLabel sx={{ fontFamily: "quicksand" }}>Location</FormLabel>
           <TextField

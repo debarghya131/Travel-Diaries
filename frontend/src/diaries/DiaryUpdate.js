@@ -11,6 +11,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPostDetails, postUpdate } from "../api-helpers/helpers";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 
 const FIELD_LIMITS = {
   title: 30,
@@ -26,7 +27,10 @@ const DiaryUpdate = () => {
     description: "",
     location: "",
     imageUrl: "",
+    imageFile: null,
   });
+  const [imagePreview, setImagePreview] = useState("");
+  const [selectedPreviewUrl, setSelectedPreviewUrl] = useState("");
   const [toast, setToast] = useState({
     open: false,
     severity: "success",
@@ -48,17 +52,43 @@ const DiaryUpdate = () => {
           title: data.post.title,
           description: data.post.description,
           imageUrl: data.post.image,
+          imageFile: null,
           location: data.post.location,
         });
+        setImagePreview(data.post.image);
       })
       .catch((err) => console.log(err));
   }, [id, navigate]);
+
+  useEffect(() => {
+    return () => {
+      if (selectedPreviewUrl) {
+        URL.revokeObjectURL(selectedPreviewUrl);
+      }
+    };
+  }, [selectedPreviewUrl]);
 
   const handleChange = (e) => {
     setInputs((prevState) => ({
       ...prevState,
       [e.target.name]: e.target.value,
     }));
+  };
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setInputs((prevState) => ({
+      ...prevState,
+      imageFile: file,
+    }));
+    setSelectedPreviewUrl(previewUrl);
+    setImagePreview(previewUrl);
   };
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -150,14 +180,43 @@ const DiaryUpdate = () => {
                 },
               }}
             />
-            <FormLabel sx={{ fontFamily: "quicksand" }}>Image URL</FormLabel>
-            <TextField
-              onChange={handleChange}
-              name="imageUrl"
-              value={inputs.imageUrl}
-              variant="standard"
-              margin="normal"
-            />
+            <FormLabel sx={{ fontFamily: "quicksand" }}>Travel Photo</FormLabel>
+            <Button
+              component="label"
+              variant="outlined"
+              color="warning"
+              startIcon={<PhotoCameraIcon />}
+              sx={{
+                justifyContent: "flex-start",
+                borderRadius: 2,
+                textTransform: "none",
+                py: 1,
+                mt: 1,
+                mb: 2,
+              }}
+            >
+              {inputs.imageFile ? inputs.imageFile.name : "Choose a new photo"}
+              <input
+                hidden
+                accept="image/*"
+                type="file"
+                onChange={handleImageChange}
+              />
+            </Button>
+            {imagePreview && (
+              <Box
+                component="img"
+                src={imagePreview}
+                alt="Travel diary"
+                sx={{
+                  width: "100%",
+                  maxHeight: 280,
+                  objectFit: "cover",
+                  borderRadius: 2,
+                  mb: 2,
+                }}
+              />
+            )}
 
             <FormLabel sx={{ fontFamily: "quicksand" }}>Location</FormLabel>
             <TextField

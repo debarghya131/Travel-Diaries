@@ -14,6 +14,30 @@ const toApiError = (error, fallbackMessage) => {
   return new Error(message);
 };
 
+const buildPostFormData = (data, options = {}) => {
+  const formData = new FormData();
+
+  formData.append("title", data.title);
+  formData.append("description", data.description);
+  formData.append("location", data.location);
+
+  if (data.imageFile) {
+    formData.append("photo", data.imageFile);
+  } else if (data.imageUrl) {
+    formData.append("image", data.imageUrl);
+  }
+
+  if (options.includeDate) {
+    formData.append("date", data.date);
+  }
+
+  if (options.includeUser) {
+    formData.append("user", localStorage.getItem("userId") || "");
+  }
+
+  return formData;
+};
+
 export const getAllPosts = async () => {
   try {
     const res = await api.get("/posts");
@@ -48,14 +72,10 @@ export const sendAuthRequest = async (signup, data) => {
 
 export const addPost = async (data) => {
   try {
-    const res = await api.post("/posts/", {
-      title: data.title,
-      description: data.description,
-      location: data.location,
-      image: data.imageUrl,
-      date: data.date,
-      user: localStorage.getItem("userId"),
-    });
+    const res = await api.post(
+      "/posts/",
+      buildPostFormData(data, { includeDate: true, includeUser: true })
+    );
 
     if (res.status !== 201) {
       throw new Error("Error occurred");
@@ -84,12 +104,7 @@ export const getPostDetails = async (id) => {
 
 export const postUpdate = async (data, id) => {
   try {
-    const res = await api.put(`/posts/${id}`, {
-      title: data.title,
-      description: data.description,
-      location: data.location,
-      image: data.imageUrl,
-    });
+    const res = await api.put(`/posts/${id}`, buildPostFormData(data));
 
     if (res.status !== 200) {
       throw new Error("Unable to update");

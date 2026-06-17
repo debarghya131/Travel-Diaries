@@ -38,6 +38,7 @@ app.use(
   })
 );
 app.use(express.json());
+app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 app.use(clerkMiddleware());
 app.use("/user", userRouter);
 app.use("/posts", postRouter);

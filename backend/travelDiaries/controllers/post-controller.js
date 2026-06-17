@@ -10,6 +10,14 @@ import Post, { POST_FIELD_LIMITS } from "../models/Post";
 import User from "../models/User";
 
 const isInvalidObjectId = (id) => !id || !mongoose.Types.ObjectId.isValid(id);
+const getUploadedImageUrl = (req) => {
+  if (!req.file) {
+    return "";
+  }
+
+  return `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+};
+
 const isInvalidPostPayload = ({ title, description, location, image, date, user }) =>
   !title ||
   title.trim() === "" ||
@@ -65,8 +73,18 @@ export const getAllPosts = async (req, res) => {
 };
 export const addPost = async (req, res) => {
   const { title, description, location, date, image, user } = req.body;
+  const postImage = getUploadedImageUrl(req) || image;
 
-  if (isInvalidPostPayload({ title, description, location, date, image, user })) {
+  if (
+    isInvalidPostPayload({
+      title,
+      description,
+      location,
+      date,
+      image: postImage,
+      user,
+    })
+  ) {
     return res.status(422).json({ message: "Invalid Data" });
   }
 
@@ -99,7 +117,7 @@ export const addPost = async (req, res) => {
     post = new Post({
       title,
       description,
-      image,
+      image: postImage,
       location,
       date: new Date(`${date}`),
       user,
@@ -156,12 +174,13 @@ export const getPostById = async (req, res) => {
 export const updatePost = async (req, res) => {
   const id = req.params.id;
   const { title, description, location, image } = req.body;
+  const postImage = getUploadedImageUrl(req) || image;
 
   if (isInvalidObjectId(id)) {
     return res.status(400).json({ message: "Invalid post id" });
   }
 
-  if (isInvalidPostUpdatePayload({ title, description, location, image })) {
+  if (isInvalidPostUpdatePayload({ title, description, location, image: postImage })) {
     return res.status(422).json({ message: "Invalid Data" });
   }
 
@@ -193,7 +212,7 @@ export const updatePost = async (req, res) => {
     post = await Post.findByIdAndUpdate(id, {
       title,
       description,
-      image,
+      image: postImage,
       location,
     });
   } catch (err) {
