@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
   Paper,
   Typography,
@@ -21,11 +22,20 @@ const Profile = () => {
   const { signOut } = useClerk();
   const navigate = useNavigate();
   const [user, setUser] = useState();
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
+    setIsLoading(true);
+    setErrorMessage("");
+
     getUserDetails()
       .then((data) => setUser(data.user))
-      .catch((err) => console.log(err));
+      .catch((err) => {
+        console.log(err);
+        setErrorMessage(err?.message || "Unable to load profile.");
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const handleClick = async () => {
@@ -35,6 +45,65 @@ const Profile = () => {
   };
 
   const postsCount = user?.posts?.length || 0;
+
+  const renderStatusContent = () => {
+    if (isLoading) {
+      return (
+        <Paper
+          elevation={0}
+          sx={{
+            maxWidth: "520px",
+            mx: "auto",
+            mt: { xs: 6, md: 10 },
+            p: { xs: 3, sm: 4 },
+            textAlign: "center",
+            borderRadius: 5,
+            bgcolor: "#fffdf8",
+            border: "1px solid rgba(35, 49, 66, 0.08)",
+            boxShadow: "0 18px 40px rgba(35, 49, 66, 0.08)",
+          }}
+        >
+          <CircularProgress color="warning" size={34} />
+          <Typography sx={{ mt: 2, color: "#233142", fontWeight: 700 }}>
+            Loading your profile
+          </Typography>
+        </Paper>
+      );
+    }
+
+    if (errorMessage) {
+      return (
+        <Paper
+          elevation={0}
+          sx={{
+            maxWidth: "560px",
+            mx: "auto",
+            mt: { xs: 6, md: 10 },
+            p: { xs: 3, sm: 4 },
+            textAlign: "center",
+            borderRadius: 5,
+            bgcolor: "#fffdf8",
+            border: "1px solid rgba(209, 81, 45, 0.2)",
+          }}
+        >
+          <Typography sx={{ color: "#233142", fontWeight: 700, mb: 1 }}>
+            Profile could not load
+          </Typography>
+          <Typography sx={{ color: "#6b7280", mb: 3 }}>{errorMessage}</Typography>
+          <Button
+            onClick={() => window.location.reload()}
+            variant="contained"
+            color="warning"
+            sx={{ borderRadius: "999px", px: 3 }}
+          >
+            Retry
+          </Button>
+        </Paper>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <Box
@@ -46,6 +115,7 @@ const Profile = () => {
           "linear-gradient(180deg, #f4ede1 0%, #f8f9fb 28%, #ffffff 100%)",
       }}
     >
+      {renderStatusContent()}
       {user && (
         <>
           <Box

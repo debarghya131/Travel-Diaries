@@ -1,5 +1,6 @@
 import { getAuth } from "@clerk/express";
 import { compareSync, hashSync } from "bcryptjs";
+import mongoose from "mongoose";
 import { applyRateLimit, authLimiter, readLimiter } from "../lib/arcjet";
 import User from "../models/User";
 
@@ -43,11 +44,23 @@ export const getUserById = async (req, res) => {
 
   const id = req.params.id;
 
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid user id" });
+  }
+
   let user;
   try {
-    user = await User.findById(id).populate("posts");
+    user = await User.findById(id)
+      .select("-password")
+      .populate({
+        path: "posts",
+        select: "title description image images location date",
+        options: { sort: { date: -1 } },
+      })
+      .lean();
   } catch (err) {
-    return console.log(err);
+    console.log(err);
+    return res.status(500).json({ message: "Unable to load profile" });
   }
   if (!user) {
     return res.status(404).json({ message: "No user found" });

@@ -36,14 +36,38 @@ const DiaryItem = ({
     message: "",
   });
   const hasValidId = Boolean(id);
-  const galleryImages =
-    images?.length > 0 ? images.filter(Boolean) : image ? [image] : [];
+  const [failedImageSources, setFailedImageSources] = useState([]);
+  const validImageSources = (images?.length > 0 ? images : image ? [image] : [])
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(
+      (item) =>
+        item &&
+        item.toLowerCase() !== "undefined" &&
+        item.toLowerCase() !== "null"
+    );
+  const galleryImages = validImageSources.filter(
+    (item) => !failedImageSources.includes(item)
+  );
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const hasMultipleImages = galleryImages.length > 1;
+  const activeImageSrc = galleryImages[activeImageIndex] || galleryImages[0];
 
   useEffect(() => {
     setActiveImageIndex(0);
+    setFailedImageSources([]);
   }, [image, images]);
+
+  useEffect(() => {
+    if (activeImageIndex >= galleryImages.length) {
+      setActiveImageIndex(0);
+    }
+  }, [activeImageIndex, galleryImages.length]);
+
+  const handleImageError = (src) => {
+    setFailedImageSources((prevState) =>
+      prevState.includes(src) ? prevState : [...prevState, src]
+    );
+  };
 
   const showPreviousImage = () => {
     setActiveImageIndex((prevIndex) =>
@@ -144,8 +168,9 @@ const DiaryItem = ({
           >
             <Box
               component="img"
-              src={galleryImages[activeImageIndex]}
+              src={activeImageSrc}
               alt={title}
+              onError={() => handleImageError(activeImageSrc)}
               sx={{
                 width: "100%",
                 height: { xs: 190, sm: 220, md: 260 },
@@ -239,6 +264,7 @@ const DiaryItem = ({
                     component="img"
                     src={item}
                     alt=""
+                    onError={() => handleImageError(item)}
                     sx={{
                       width: "100%",
                       height: "100%",
