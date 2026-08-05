@@ -3,13 +3,15 @@ import {
   Box,
   Button,
   FormLabel,
+  IconButton,
   Snackbar,
   TextField,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import CloseIcon from "@mui/icons-material/Close";
 import { addPost } from "../api-helpers/helpers";
 import { useNavigate } from "react-router-dom";
 
@@ -30,6 +32,7 @@ const Add = () => {
     date: "",
   });
   const [imagePreviews, setImagePreviews] = useState([]);
+  const selectedPreviewUrlsRef = useRef([]);
   const [toast, setToast] = useState({
     open: false,
     severity: "success",
@@ -38,9 +41,9 @@ const Add = () => {
 
   useEffect(() => {
     return () => {
-      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
+      selectedPreviewUrlsRef.current.forEach((preview) => URL.revokeObjectURL(preview));
     };
-  }, [imagePreviews]);
+  }, []);
   const handleChange = (e) => {
     setInputs((prevState) => ({
       ...prevState,
@@ -48,19 +51,58 @@ const Add = () => {
     }));
   };
   const handleImageChange = (e) => {
-    const files = Array.from(e.target.files || []).slice(0, MAX_IMAGES);
+    const selectedFiles = Array.from(e.target.files || []);
+    e.target.value = "";
 
-    if (!files.length) {
+    if (!selectedFiles.length) {
       return;
     }
 
-    const previewUrls = files.map((file) => URL.createObjectURL(file));
+    const availableSlots = MAX_IMAGES - inputs.imageFiles.length;
+
+    if (selectedFiles.length > availableSlots) {
+      setToast({
+        open: true,
+        severity: "error",
+        message:
+          availableSlots > 0
+            ? `You can add only ${availableSlots} more photo${
+                availableSlots > 1 ? "s" : ""
+              }.`
+            : "You can upload up to 3 travel photos.",
+      });
+      return;
+    }
+
+    const previewUrls = selectedFiles.map((file) => URL.createObjectURL(file));
+    selectedPreviewUrlsRef.current = [
+      ...selectedPreviewUrlsRef.current,
+      ...previewUrls,
+    ];
 
     setInputs((prevState) => ({
       ...prevState,
-      imageFiles: files,
+      imageFiles: [...prevState.imageFiles, ...selectedFiles],
     }));
-    setImagePreviews(previewUrls);
+    setImagePreviews((prevState) => [...prevState, ...previewUrls]);
+  };
+  const handleRemoveImage = (index) => {
+    const previewToRemove = imagePreviews[index];
+
+    if (selectedPreviewUrlsRef.current.includes(previewToRemove)) {
+      URL.revokeObjectURL(previewToRemove);
+      selectedPreviewUrlsRef.current = selectedPreviewUrlsRef.current.filter(
+        (preview) => preview !== previewToRemove
+      );
+    }
+
+    setInputs((prevState) => ({
+      ...prevState,
+      imageFiles: prevState.imageFiles.filter((_, fileIndex) => fileIndex !== index),
+    }));
+    setImagePreviews((prevState) =>
+      prevState.filter((_, previewIndex) => previewIndex !== index)
+    );
   };
   const onResReceived = () => {
     setToast({
@@ -215,16 +257,41 @@ const Add = () => {
               {imagePreviews.map((preview, index) => (
                 <Box
                   key={preview}
-                  component="img"
-                  src={preview}
-                  alt={`Selected travel ${index + 1}`}
                   sx={{
-                    width: "100%",
-                    height: { xs: 150, sm: 170 },
-                    objectFit: "cover",
-                    borderRadius: 2,
+                    position: "relative",
                   }}
-                />
+                >
+                  <Box
+                    component="img"
+                    src={preview}
+                    alt={`Selected travel ${index + 1}`}
+                    sx={{
+                      width: "100%",
+                      height: { xs: 150, sm: 170 },
+                      objectFit: "cover",
+                      borderRadius: 2,
+                      display: "block",
+                    }}
+                  />
+                  <IconButton
+                    type="button"
+                    aria-label={`Remove selected travel photo ${index + 1}`}
+                    onClick={() => handleRemoveImage(index)}
+                    size="small"
+                    sx={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      bgcolor: "rgba(255, 255, 255, 0.9)",
+                      color: "#233142",
+                      "&:hover": {
+                        bgcolor: "#ffffff",
+                      },
+                    }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
               ))}
             </Box>
           )}
