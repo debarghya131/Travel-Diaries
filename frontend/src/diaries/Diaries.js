@@ -82,6 +82,7 @@ const Diaries = () => {
               date={new Date(`${item.date}`).toLocaleDateString()}
               description={item.description}
               image={item.image}
+              images={item.images}
               id={item._id || item.id}
               location={item.location}
               title={item.title}
@@ -120,6 +121,7 @@ const Diaries = () => {
                   date={new Date(`${item.date}`).toLocaleDateString()}
                   description={item.description}
                   image={item.image}
+                  images={item.images}
                   id={item._id || item.id}
                   location={item.location}
                   title={item.title}

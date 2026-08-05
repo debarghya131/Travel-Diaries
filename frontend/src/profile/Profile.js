@@ -316,6 +316,7 @@ const Profile = () => {
                     description={post.description}
                     id={post._id || post.id}
                     image={post.image}
+                    images={post.images}
                     location={post.location}
                     user={user._id}
                     name={user.name}

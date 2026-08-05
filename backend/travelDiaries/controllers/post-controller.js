@@ -10,15 +10,53 @@ import Post, { POST_FIELD_LIMITS } from "../models/Post";
 import User from "../models/User";
 
 const isInvalidObjectId = (id) => !id || !mongoose.Types.ObjectId.isValid(id);
-const getUploadedImageUrl = (req) => {
-  if (!req.file) {
-    return "";
+const MAX_POST_IMAGES = 3;
+
+const getUploadedImageUrls = (req) => {
+  if (req.files?.photos?.length) {
+    return req.files.photos.map(
+      (file) => `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+    );
   }
 
-  return `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+  if (req.files?.photo?.length) {
+    return req.files.photo.map(
+      (file) => `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+    );
+  }
+
+  return [];
 };
 
-const isInvalidPostPayload = ({ title, description, location, image, date, user }) =>
+const parseImageList = (images) => {
+  if (!images) {
+    return [];
+  }
+
+  if (Array.isArray(images)) {
+    return images;
+  }
+
+  try {
+    const parsedImages = JSON.parse(images);
+
+    return Array.isArray(parsedImages) ? parsedImages : [];
+  } catch (err) {
+    return [];
+  }
+};
+
+const normalizeImages = ({ uploadedImages, image, images }) => {
+  const nextImages = uploadedImages.length ? uploadedImages : parseImageList(images);
+
+  if (nextImages.length) {
+    return nextImages.filter((item) => typeof item === "string" && item.trim() !== "");
+  }
+
+  return image && image.trim() !== "" ? [image] : [];
+};
+
+const isInvalidPostPayload = ({ title, description, location, images, date, user }) =>
   !title ||
   title.trim() === "" ||
   title.length > POST_FIELD_LIMITS.title ||
@@ -28,12 +66,12 @@ const isInvalidPostPayload = ({ title, description, location, image, date, user 
   !location ||
   location.trim() === "" ||
   location.length > POST_FIELD_LIMITS.location ||
-  !image ||
-  image.trim() === "" ||
+  !images.length ||
+  images.length > MAX_POST_IMAGES ||
   !date ||
   !user;
 
-const isInvalidPostUpdatePayload = ({ title, description, location, image }) =>
+const isInvalidPostUpdatePayload = ({ title, description, location, images }) =>
   !title ||
   title.trim() === "" ||
   title.length > POST_FIELD_LIMITS.title ||
@@ -43,8 +81,8 @@ const isInvalidPostUpdatePayload = ({ title, description, location, image }) =>
   !location ||
   location.trim() === "" ||
   location.length > POST_FIELD_LIMITS.location ||
-  !image ||
-  image.trim() === "";
+  !images.length ||
+  images.length > MAX_POST_IMAGES;
 
 export const getAllPosts = async (req, res) => {
   const allowed = await applyRateLimit(
@@ -72,8 +110,12 @@ export const getAllPosts = async (req, res) => {
   return res.status(200).json({ posts });
 };
 export const addPost = async (req, res) => {
-  const { title, description, location, date, image, user } = req.body;
-  const postImage = getUploadedImageUrl(req) || image;
+  const { title, description, location, date, image, images, user } = req.body;
+  const postImages = normalizeImages({
+    uploadedImages: getUploadedImageUrls(req),
+    image,
+    images,
+  });
 
   if (
     isInvalidPostPayload({
@@ -81,7 +123,7 @@ export const addPost = async (req, res) => {
       description,
       location,
       date,
-      image: postImage,
+      images: postImages,
       user,
     })
   ) {
@@ -117,7 +159,8 @@ export const addPost = async (req, res) => {
     post = new Post({
       title,
       description,
-      image: postImage,
+      image: postImages[0],
+      images: postImages,
       location,
       date: new Date(`${date}`),
       user,
@@ -173,14 +216,18 @@ export const getPostById = async (req, res) => {
 
 export const updatePost = async (req, res) => {
   const id = req.params.id;
-  const { title, description, location, image } = req.body;
-  const postImage = getUploadedImageUrl(req) || image;
+  const { title, description, location, image, images } = req.body;
+  const postImages = normalizeImages({
+    uploadedImages: getUploadedImageUrls(req),
+    image,
+    images,
+  });
 
   if (isInvalidObjectId(id)) {
     return res.status(400).json({ message: "Invalid post id" });
   }
 
-  if (isInvalidPostUpdatePayload({ title, description, location, image: postImage })) {
+  if (isInvalidPostUpdatePayload({ title, description, location, images: postImages })) {
     return res.status(422).json({ message: "Invalid Data" });
   }
 
@@ -212,7 +259,8 @@ export const updatePost = async (req, res) => {
     post = await Post.findByIdAndUpdate(id, {
       title,
       description,
-      image: postImage,
+      image: postImages[0],
+      images: postImages,
       location,
     });
   } catch (err) {

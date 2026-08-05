@@ -6,14 +6,14 @@ import {
   getPostById,
   updatePost,
 } from "../controllers/post-controller";
-import { uploadPostImage } from "../lib/upload";
+import { uploadPostImages } from "../lib/upload";
 
 const postRouter = Router();
 
 postRouter.get("/", getAllPosts);
 postRouter.get("/:id", getPostById);
-postRouter.post("/", uploadPostImage, addPost);
-postRouter.put("/:id", uploadPostImage, updatePost);
+postRouter.post("/", uploadPostImages, addPost);
+postRouter.put("/:id", uploadPostImages, updatePost);
 postRouter.delete("/:id", deletePost);
 
 export default postRouter;

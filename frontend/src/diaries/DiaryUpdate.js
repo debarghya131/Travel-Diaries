@@ -18,6 +18,7 @@ const FIELD_LIMITS = {
   description: 120,
   location: 25,
 };
+const MAX_IMAGES = 3;
 
 const DiaryUpdate = () => {
   const navigate = useNavigate();
@@ -27,10 +28,11 @@ const DiaryUpdate = () => {
     description: "",
     location: "",
     imageUrl: "",
-    imageFile: null,
+    imageUrls: [],
+    imageFiles: [],
   });
-  const [imagePreview, setImagePreview] = useState("");
-  const [selectedPreviewUrl, setSelectedPreviewUrl] = useState("");
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [selectedPreviewUrls, setSelectedPreviewUrls] = useState([]);
   const [toast, setToast] = useState({
     open: false,
     severity: "success",
@@ -47,26 +49,28 @@ const DiaryUpdate = () => {
     getPostDetails(id)
       .then((data) => {
         setPost(data.post);
+        const postImages = data.post.images?.length
+          ? data.post.images
+          : [data.post.image];
 
         setInputs({
           title: data.post.title,
           description: data.post.description,
           imageUrl: data.post.image,
-          imageFile: null,
+          imageUrls: postImages,
+          imageFiles: [],
           location: data.post.location,
         });
-        setImagePreview(data.post.image);
+        setImagePreviews(postImages);
       })
       .catch((err) => console.log(err));
   }, [id, navigate]);
 
   useEffect(() => {
     return () => {
-      if (selectedPreviewUrl) {
-        URL.revokeObjectURL(selectedPreviewUrl);
-      }
+      selectedPreviewUrls.forEach((preview) => URL.revokeObjectURL(preview));
     };
-  }, [selectedPreviewUrl]);
+  }, [selectedPreviewUrls]);
 
   const handleChange = (e) => {
     setInputs((prevState) => ({
@@ -75,20 +79,20 @@ const DiaryUpdate = () => {
     }));
   };
   const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []).slice(0, MAX_IMAGES);
 
-    if (!file) {
+    if (!files.length) {
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrls = files.map((file) => URL.createObjectURL(file));
 
     setInputs((prevState) => ({
       ...prevState,
-      imageFile: file,
+      imageFiles: files,
     }));
-    setSelectedPreviewUrl(previewUrl);
-    setImagePreview(previewUrl);
+    setSelectedPreviewUrls(previewUrls);
+    setImagePreviews(previewUrls);
   };
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -180,7 +184,9 @@ const DiaryUpdate = () => {
                 },
               }}
             />
-            <FormLabel sx={{ fontFamily: "quicksand" }}>Travel Photo</FormLabel>
+            <FormLabel sx={{ fontFamily: "quicksand" }}>
+              Travel Photos ({imagePreviews.length}/{MAX_IMAGES})
+            </FormLabel>
             <Button
               component="label"
               variant="outlined"
@@ -195,27 +201,46 @@ const DiaryUpdate = () => {
                 mb: 2,
               }}
             >
-              {inputs.imageFile ? inputs.imageFile.name : "Choose a new photo"}
+              {inputs.imageFiles.length
+                ? `${inputs.imageFiles.length} new photo${
+                    inputs.imageFiles.length > 1 ? "s" : ""
+                  } selected`
+                : "Choose up to 3 new photos"}
               <input
                 hidden
                 accept="image/*"
                 type="file"
+                multiple
                 onChange={handleImageChange}
               />
             </Button>
-            {imagePreview && (
+            {imagePreviews.length > 0 && (
               <Box
-                component="img"
-                src={imagePreview}
-                alt="Travel diary"
                 sx={{
-                  width: "100%",
-                  maxHeight: 280,
-                  objectFit: "cover",
-                  borderRadius: 2,
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: `repeat(${imagePreviews.length}, minmax(0, 1fr))`,
+                  },
+                  gap: 1,
                   mb: 2,
                 }}
-              />
+              >
+                {imagePreviews.map((preview, index) => (
+                  <Box
+                    key={`${preview}-${index}`}
+                    component="img"
+                    src={preview}
+                    alt={`Travel diary ${index + 1}`}
+                    sx={{
+                      width: "100%",
+                      height: { xs: 150, sm: 175 },
+                      objectFit: "cover",
+                      borderRadius: 2,
+                    }}
+                  />
+                ))}
+              </Box>
             )}
 
             <FormLabel sx={{ fontFamily: "quicksand" }}>Location</FormLabel>

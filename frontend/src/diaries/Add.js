@@ -18,6 +18,7 @@ const FIELD_LIMITS = {
   description: 120,
   location: 25,
 };
+const MAX_IMAGES = 3;
 
 const Add = () => {
   const navigate = useNavigate();
@@ -25,10 +26,10 @@ const Add = () => {
     title: "",
     description: "",
     location: "",
-    imageFile: null,
+    imageFiles: [],
     date: "",
   });
-  const [imagePreview, setImagePreview] = useState("");
+  const [imagePreviews, setImagePreviews] = useState([]);
   const [toast, setToast] = useState({
     open: false,
     severity: "success",
@@ -37,11 +38,9 @@ const Add = () => {
 
   useEffect(() => {
     return () => {
-      if (imagePreview) {
-        URL.revokeObjectURL(imagePreview);
-      }
+      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
     };
-  }, [imagePreview]);
+  }, [imagePreviews]);
   const handleChange = (e) => {
     setInputs((prevState) => ({
       ...prevState,
@@ -49,19 +48,19 @@ const Add = () => {
     }));
   };
   const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []).slice(0, MAX_IMAGES);
 
-    if (!file) {
+    if (!files.length) {
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrls = files.map((file) => URL.createObjectURL(file));
 
     setInputs((prevState) => ({
       ...prevState,
-      imageFile: file,
+      imageFiles: files,
     }));
-    setImagePreview(previewUrl);
+    setImagePreviews(previewUrls);
   };
   const onResReceived = () => {
     setToast({
@@ -74,11 +73,11 @@ const Add = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!inputs.imageFile) {
+    if (!inputs.imageFiles.length) {
       setToast({
         open: true,
         severity: "error",
-        message: "Please choose a travel photo.",
+        message: "Please choose at least one travel photo.",
       });
       return;
     }
@@ -173,7 +172,9 @@ const Add = () => {
               },
             }}
           />
-          <FormLabel sx={{ fontFamily: "quicksand" }}>Travel Photo</FormLabel>
+          <FormLabel sx={{ fontFamily: "quicksand" }}>
+            Travel Photos ({inputs.imageFiles.length}/{MAX_IMAGES})
+          </FormLabel>
           <Button
             component="label"
             variant="outlined"
@@ -186,27 +187,46 @@ const Add = () => {
               py: 1,
             }}
           >
-            {inputs.imageFile ? inputs.imageFile.name : "Choose photo from device"}
+            {inputs.imageFiles.length
+              ? `${inputs.imageFiles.length} photo${
+                  inputs.imageFiles.length > 1 ? "s" : ""
+                } selected`
+              : "Choose up to 3 photos"}
             <input
               hidden
               accept="image/*"
               type="file"
+              multiple
               onChange={handleImageChange}
             />
           </Button>
-          {imagePreview && (
+          {imagePreviews.length > 0 && (
             <Box
-              component="img"
-              src={imagePreview}
-              alt="Selected travel"
               sx={{
-                width: "100%",
-                maxHeight: 260,
-                objectFit: "cover",
-                borderRadius: 2,
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: `repeat(${imagePreviews.length}, minmax(0, 1fr))`,
+                },
+                gap: 1,
                 mt: 1,
               }}
-            />
+            >
+              {imagePreviews.map((preview, index) => (
+                <Box
+                  key={preview}
+                  component="img"
+                  src={preview}
+                  alt={`Selected travel ${index + 1}`}
+                  sx={{
+                    width: "100%",
+                    height: { xs: 150, sm: 170 },
+                    objectFit: "cover",
+                    borderRadius: 2,
+                  }}
+                />
+              ))}
+            </Box>
           )}
 
           <FormLabel sx={{ fontFamily: "quicksand" }}>Location</FormLabel>

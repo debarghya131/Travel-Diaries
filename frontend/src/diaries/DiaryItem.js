@@ -6,13 +6,16 @@ import {
   CardActions,
   CardContent,
   CardHeader,
+  IconButton,
   Snackbar,
   Typography,
 } from "@mui/material";
 import { Box } from "@mui/system";
 import ModeEditOutlineIcon from "@mui/icons-material/ModeEditOutline";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
-import React, { useState } from "react";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import React, { useEffect, useState } from "react";
 
 import { Link } from "react-router-dom";
 import { postDelete } from "../api-helpers/helpers";
@@ -20,6 +23,7 @@ const DiaryItem = ({
   title,
   description,
   image,
+  images,
   location,
   date,
   id,
@@ -32,6 +36,26 @@ const DiaryItem = ({
     message: "",
   });
   const hasValidId = Boolean(id);
+  const galleryImages =
+    images?.length > 0 ? images.filter(Boolean) : image ? [image] : [];
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const hasMultipleImages = galleryImages.length > 1;
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [image, images]);
+
+  const showPreviousImage = () => {
+    setActiveImageIndex((prevIndex) =>
+      prevIndex === 0 ? galleryImages.length - 1 : prevIndex - 1
+    );
+  };
+
+  const showNextImage = () => {
+    setActiveImageIndex((prevIndex) =>
+      prevIndex === galleryImages.length - 1 ? 0 : prevIndex + 1
+    );
+  };
 
   const isLoogedInUser = () => {
     if (localStorage.getItem("userId") === user) {
@@ -100,16 +124,134 @@ const DiaryItem = ({
         }}
       />
 
-      <Box
-        component="img"
-        src={image}
-        alt={title}
-        sx={{
-          width: "100%",
-          height: { xs: 190, sm: 220, md: 260 },
-          objectFit: "cover",
-        }}
-      />
+      {galleryImages.length > 0 && (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: hasMultipleImages ? "1fr 84px" : "1fr",
+            },
+            gap: hasMultipleImages ? 1 : 0,
+            alignItems: "stretch",
+          }}
+        >
+          <Box
+            sx={{
+              position: "relative",
+              minWidth: 0,
+            }}
+          >
+            <Box
+              component="img"
+              src={galleryImages[activeImageIndex]}
+              alt={title}
+              sx={{
+                width: "100%",
+                height: { xs: 190, sm: 220, md: 260 },
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+            {hasMultipleImages && (
+              <>
+                <IconButton
+                  type="button"
+                  aria-label="Previous photo"
+                  onClick={showPreviousImage}
+                  sx={{
+                    position: "absolute",
+                    left: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    bgcolor: "rgba(255, 255, 255, 0.88)",
+                    color: "#233142",
+                    width: 36,
+                    height: 36,
+                    "&:hover": {
+                      bgcolor: "#ffffff",
+                    },
+                  }}
+                >
+                  <ChevronLeftIcon />
+                </IconButton>
+                <IconButton
+                  type="button"
+                  aria-label="Next photo"
+                  onClick={showNextImage}
+                  sx={{
+                    position: "absolute",
+                    right: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    bgcolor: "rgba(255, 255, 255, 0.88)",
+                    color: "#233142",
+                    width: 36,
+                    height: 36,
+                    "&:hover": {
+                      bgcolor: "#ffffff",
+                    },
+                  }}
+                >
+                  <ChevronRightIcon />
+                </IconButton>
+              </>
+            )}
+          </Box>
+          {hasMultipleImages && (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: `repeat(${galleryImages.length}, minmax(0, 1fr))`,
+                  sm: "1fr",
+                },
+                gap: 1,
+                p: { xs: 1, sm: 0 },
+                pr: { sm: 1 },
+                pb: { sm: 0 },
+              }}
+            >
+              {galleryImages.map((item, index) => (
+                <Box
+                  key={`${item}-${index}`}
+                  component="button"
+                  type="button"
+                  onClick={() => setActiveImageIndex(index)}
+                  aria-label={`View photo ${index + 1}`}
+                  sx={{
+                    border: index === activeImageIndex ? "2px solid #d1512d" : 0,
+                    borderRadius: 1,
+                    p: 0,
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    height: { xs: 54, sm: "100%" },
+                    minHeight: { sm: 0 },
+                    bgcolor: "transparent",
+                    opacity: index === activeImageIndex ? 1 : 0.68,
+                    transition: "opacity 160ms ease, border-color 160ms ease",
+                    "&:hover": {
+                      opacity: 1,
+                    },
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={item}
+                    alt=""
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+      )}
       <CardContent sx={{ pb: 1 }}>
         <Typography
           paddingBottom={1}

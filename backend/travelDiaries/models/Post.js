@@ -21,6 +21,14 @@ const postSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  images: {
+    type: [String],
+    default: undefined,
+    validate: {
+      validator: (images) => !images || images.length <= 3,
+      message: "A diary can have at most 3 images.",
+    },
+  },
   location: {
     type: String,
     required: true,

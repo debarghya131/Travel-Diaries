@@ -21,8 +21,15 @@ const buildPostFormData = (data, options = {}) => {
   formData.append("description", data.description);
   formData.append("location", data.location);
 
-  if (data.imageFile) {
-    formData.append("photo", data.imageFile);
+  if (data.imageFiles?.length) {
+    data.imageFiles.forEach((file) => {
+      formData.append("photos", file);
+    });
+  } else if (data.imageFile) {
+    formData.append("photos", data.imageFile);
+  } else if (data.imageUrls?.length) {
+    formData.append("images", JSON.stringify(data.imageUrls));
+    formData.append("image", data.imageUrls[0]);
   } else if (data.imageUrl) {
     formData.append("image", data.imageUrl);
   }

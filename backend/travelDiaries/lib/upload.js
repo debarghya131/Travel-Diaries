@@ -37,13 +37,18 @@ const upload = multer({
   },
 });
 
-export const uploadPostImage = (req, res, next) => {
-  upload.single("photo")(req, res, (err) => {
+export const uploadPostImages = (req, res, next) => {
+  upload.fields([
+    { name: "photos", maxCount: 3 },
+    { name: "photo", maxCount: 1 },
+  ])(req, res, (err) => {
     if (err) {
       return res.status(400).json({
         message:
           err.code === "LIMIT_FILE_SIZE"
             ? "Image must be 5MB or smaller."
+            : err.code === "LIMIT_UNEXPECTED_FILE"
+            ? "You can upload up to 3 travel photos."
             : err.message,
       });
     }
@@ -51,4 +56,3 @@ export const uploadPostImage = (req, res, next) => {
     return next();
   });
 };
-
