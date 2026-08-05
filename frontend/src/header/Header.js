@@ -101,15 +101,28 @@ const Header = () => {
           flexWrap="wrap"
         >
           <Box
-            component="img"
-            src="/applogo.png"
-            alt="Travel Diaries"
+            component={Link}
+            to="/"
+            aria-label="Go to home page"
+            title="Home"
             sx={{
-              height: { xs: 42, sm: 48, md: 54 },
-              width: "auto",
-              objectFit: "contain",
+              display: "inline-flex",
+              alignItems: "center",
+              textDecoration: "none",
             }}
-          />
+          >
+            <Box
+              component="img"
+              src="/applogo.png"
+              alt="Travel Diaries"
+              sx={{
+                height: { xs: 42, sm: 48, md: 54 },
+                width: "auto",
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
+          </Box>
           <Chip
             icon={<VisibilityOutlinedIcon />}
             label={
