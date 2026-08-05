@@ -25,9 +25,13 @@ const buildPostFormData = (data, options = {}) => {
     data.imageFiles.forEach((file) => {
       formData.append("photos", file);
     });
-  } else if (data.imageFile) {
+  }
+
+  if (data.imageFile) {
     formData.append("photos", data.imageFile);
-  } else if (data.imageUrls?.length) {
+  }
+
+  if (data.imageUrls?.length) {
     formData.append("images", JSON.stringify(data.imageUrls));
     formData.append("image", data.imageUrls[0]);
   } else if (data.imageUrl) {

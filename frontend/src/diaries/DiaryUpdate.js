@@ -2,16 +2,18 @@ import {
   Alert,
   Button,
   FormLabel,
+  IconButton,
   Snackbar,
   TextField,
   Typography,
 } from "@mui/material";
 import { Box } from "@mui/system";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPostDetails, postUpdate } from "../api-helpers/helpers";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import CloseIcon from "@mui/icons-material/Close";
 
 const FIELD_LIMITS = {
   title: 30,
@@ -32,7 +34,7 @@ const DiaryUpdate = () => {
     imageFiles: [],
   });
   const [imagePreviews, setImagePreviews] = useState([]);
-  const [selectedPreviewUrls, setSelectedPreviewUrls] = useState([]);
+  const selectedPreviewUrlsRef = useRef([]);
   const [toast, setToast] = useState({
     open: false,
     severity: "success",
@@ -68,9 +70,9 @@ const DiaryUpdate = () => {
 
   useEffect(() => {
     return () => {
-      selectedPreviewUrls.forEach((preview) => URL.revokeObjectURL(preview));
+      selectedPreviewUrlsRef.current.forEach((preview) => URL.revokeObjectURL(preview));
     };
-  }, [selectedPreviewUrls]);
+  }, []);
 
   const handleChange = (e) => {
     setInputs((prevState) => ({
@@ -79,23 +81,90 @@ const DiaryUpdate = () => {
     }));
   };
   const handleImageChange = (e) => {
-    const files = Array.from(e.target.files || []).slice(0, MAX_IMAGES);
+    const selectedFiles = Array.from(e.target.files || []);
+    e.target.value = "";
 
-    if (!files.length) {
+    if (!selectedFiles.length) {
       return;
     }
 
-    const previewUrls = files.map((file) => URL.createObjectURL(file));
+    const availableSlots = MAX_IMAGES - imagePreviews.length;
+
+    if (selectedFiles.length > availableSlots) {
+      setToast({
+        open: true,
+        severity: "error",
+        message:
+          availableSlots > 0
+            ? `You can add only ${availableSlots} more photo${
+                availableSlots > 1 ? "s" : ""
+              }.`
+            : "You can upload up to 3 travel photos.",
+      });
+      return;
+    }
+
+    const previewUrls = selectedFiles.map((file) => URL.createObjectURL(file));
+    selectedPreviewUrlsRef.current = [
+      ...selectedPreviewUrlsRef.current,
+      ...previewUrls,
+    ];
 
     setInputs((prevState) => ({
       ...prevState,
-      imageFiles: files,
+      imageFiles: [...prevState.imageFiles, ...selectedFiles],
     }));
-    setSelectedPreviewUrls(previewUrls);
-    setImagePreviews(previewUrls);
+    setImagePreviews((prevState) => [...prevState, ...previewUrls]);
+  };
+  const handleRemoveImage = (index) => {
+    const existingImageCount = inputs.imageUrls.length;
+    const previewToRemove = imagePreviews[index];
+
+    if (selectedPreviewUrlsRef.current.includes(previewToRemove)) {
+      URL.revokeObjectURL(previewToRemove);
+      selectedPreviewUrlsRef.current = selectedPreviewUrlsRef.current.filter(
+        (preview) => preview !== previewToRemove
+      );
+    }
+
+    setInputs((prevState) => {
+      if (index < existingImageCount) {
+        const nextImageUrls = prevState.imageUrls.filter(
+          (_, imageIndex) => imageIndex !== index
+        );
+
+        return {
+          ...prevState,
+          imageUrl: nextImageUrls[0] || "",
+          imageUrls: nextImageUrls,
+        };
+      }
+
+      const fileIndex = index - existingImageCount;
+
+      return {
+        ...prevState,
+        imageFiles: prevState.imageFiles.filter(
+          (_, imageIndex) => imageIndex !== fileIndex
+        ),
+      };
+    });
+    setImagePreviews((prevState) =>
+      prevState.filter((_, previewIndex) => previewIndex !== index)
+    );
   };
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!imagePreviews.length) {
+      setToast({
+        open: true,
+        severity: "error",
+        message: "Please keep at least one travel photo.",
+      });
+      return;
+    }
+
     postUpdate(inputs, id)
       .then(() => {
         setToast({
@@ -229,16 +298,41 @@ const DiaryUpdate = () => {
                 {imagePreviews.map((preview, index) => (
                   <Box
                     key={`${preview}-${index}`}
-                    component="img"
-                    src={preview}
-                    alt={`Travel diary ${index + 1}`}
                     sx={{
-                      width: "100%",
-                      height: { xs: 150, sm: 175 },
-                      objectFit: "cover",
-                      borderRadius: 2,
+                      position: "relative",
                     }}
-                  />
+                  >
+                    <Box
+                      component="img"
+                      src={preview}
+                      alt={`Travel diary ${index + 1}`}
+                      sx={{
+                        width: "100%",
+                        height: { xs: 150, sm: 175 },
+                        objectFit: "cover",
+                        borderRadius: 2,
+                        display: "block",
+                      }}
+                    />
+                    <IconButton
+                      type="button"
+                      aria-label={`Remove travel photo ${index + 1}`}
+                      onClick={() => handleRemoveImage(index)}
+                      size="small"
+                      sx={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        bgcolor: "rgba(255, 255, 255, 0.9)",
+                        color: "#233142",
+                        "&:hover": {
+                          bgcolor: "#ffffff",
+                        },
+                      }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
                 ))}
               </Box>
             )}

@@ -47,7 +47,8 @@ const parseImageList = (images) => {
 };
 
 const normalizeImages = ({ uploadedImages, image, images }) => {
-  const nextImages = uploadedImages.length ? uploadedImages : parseImageList(images);
+  const existingImages = parseImageList(images);
+  const nextImages = [...existingImages, ...uploadedImages];
 
   if (nextImages.length) {
     return nextImages.filter((item) => typeof item === "string" && item.trim() !== "");
