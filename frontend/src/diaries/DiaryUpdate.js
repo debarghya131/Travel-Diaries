@@ -22,6 +22,25 @@ const FIELD_LIMITS = {
 };
 const MAX_IMAGES = 3;
 
+const isValidImageSource = (image) => {
+  if (typeof image !== "string") {
+    return false;
+  }
+
+  const trimmedImage = image.trim();
+
+  return (
+    Boolean(trimmedImage) &&
+    trimmedImage.toLowerCase() !== "undefined" &&
+    trimmedImage.toLowerCase() !== "null"
+  );
+};
+
+const normalizeImageSources = (images) =>
+  images
+    .filter(isValidImageSource)
+    .map((image) => image.trim());
+
 const DiaryUpdate = () => {
   const navigate = useNavigate();
   const [post, setPost] = useState();
@@ -35,6 +54,7 @@ const DiaryUpdate = () => {
   });
   const [imagePreviews, setImagePreviews] = useState([]);
   const selectedPreviewUrlsRef = useRef([]);
+  const brokenImageWarningShownRef = useRef(false);
   const [toast, setToast] = useState({
     open: false,
     severity: "success",
@@ -51,14 +71,14 @@ const DiaryUpdate = () => {
     getPostDetails(id)
       .then((data) => {
         setPost(data.post);
-        const postImages = data.post.images?.length
-          ? data.post.images
-          : [data.post.image];
+        const postImages = normalizeImageSources(
+          data.post.images?.length ? data.post.images : [data.post.image]
+        );
 
         setInputs({
           title: data.post.title,
           description: data.post.description,
-          imageUrl: data.post.image,
+          imageUrl: postImages[0] || "",
           imageUrls: postImages,
           imageFiles: [],
           location: data.post.location,
@@ -116,11 +136,14 @@ const DiaryUpdate = () => {
     }));
     setImagePreviews((prevState) => [...prevState, ...previewUrls]);
   };
-  const handleRemoveImage = (index) => {
-    const existingImageCount = inputs.imageUrls.length;
-    const previewToRemove = imagePreviews[index];
+  const removeImagePreview = (previewToRemove) => {
+    if (!previewToRemove) {
+      return;
+    }
 
-    if (selectedPreviewUrlsRef.current.includes(previewToRemove)) {
+    const selectedFileIndex = selectedPreviewUrlsRef.current.indexOf(previewToRemove);
+
+    if (selectedFileIndex !== -1) {
       URL.revokeObjectURL(previewToRemove);
       selectedPreviewUrlsRef.current = selectedPreviewUrlsRef.current.filter(
         (preview) => preview !== previewToRemove
@@ -128,11 +151,11 @@ const DiaryUpdate = () => {
     }
 
     setInputs((prevState) => {
-      if (index < existingImageCount) {
-        const nextImageUrls = prevState.imageUrls.filter(
-          (_, imageIndex) => imageIndex !== index
-        );
+      const nextImageUrls = prevState.imageUrls.filter(
+        (imageUrl) => imageUrl !== previewToRemove
+      );
 
+      if (nextImageUrls.length !== prevState.imageUrls.length) {
         return {
           ...prevState,
           imageUrl: nextImageUrls[0] || "",
@@ -140,18 +163,35 @@ const DiaryUpdate = () => {
         };
       }
 
-      const fileIndex = index - existingImageCount;
+      if (selectedFileIndex !== -1) {
+        return {
+          ...prevState,
+          imageFiles: prevState.imageFiles.filter(
+            (_, imageIndex) => imageIndex !== selectedFileIndex
+          ),
+        };
+      }
 
-      return {
-        ...prevState,
-        imageFiles: prevState.imageFiles.filter(
-          (_, imageIndex) => imageIndex !== fileIndex
-        ),
-      };
+      return prevState;
     });
     setImagePreviews((prevState) =>
-      prevState.filter((_, previewIndex) => previewIndex !== index)
+      prevState.filter((preview) => preview !== previewToRemove)
     );
+  };
+  const handleRemoveImage = (index) => {
+    removeImagePreview(imagePreviews[index]);
+  };
+  const handlePreviewImageError = (preview) => {
+    if (!brokenImageWarningShownRef.current) {
+      brokenImageWarningShownRef.current = true;
+      setToast({
+        open: true,
+        severity: "warning",
+        message: "Some saved photos could not load. Please upload them again.",
+      });
+    }
+
+    removeImagePreview(preview);
   };
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -306,6 +346,7 @@ const DiaryUpdate = () => {
                       component="img"
                       src={preview}
                       alt={`Travel diary ${index + 1}`}
+                      onError={() => handlePreviewImageError(preview)}
                       sx={{
                         width: "100%",
                         height: { xs: 150, sm: 175 },

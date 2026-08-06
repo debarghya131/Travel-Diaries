@@ -46,15 +46,31 @@ const parseImageList = (images) => {
   }
 };
 
-const normalizeImages = ({ uploadedImages, image, images }) => {
-  const existingImages = parseImageList(images);
-  const nextImages = [...existingImages, ...uploadedImages];
-
-  if (nextImages.length) {
-    return nextImages.filter((item) => typeof item === "string" && item.trim() !== "");
+const isValidImageSource = (image) => {
+  if (typeof image !== "string") {
+    return false;
   }
 
-  return image && image.trim() !== "" ? [image] : [];
+  const trimmedImage = image.trim();
+
+  return (
+    Boolean(trimmedImage) &&
+    trimmedImage.toLowerCase() !== "undefined" &&
+    trimmedImage.toLowerCase() !== "null"
+  );
+};
+
+const normalizeImages = ({ uploadedImages, image, images }) => {
+  const existingImages = parseImageList(images);
+  const nextImages = [...existingImages, ...uploadedImages]
+    .filter(isValidImageSource)
+    .map((item) => item.trim());
+
+  if (nextImages.length) {
+    return [...new Set(nextImages)];
+  }
+
+  return isValidImageSource(image) ? [image.trim()] : [];
 };
 
 const isInvalidPostPayload = ({ title, description, location, images, date, user }) =>
