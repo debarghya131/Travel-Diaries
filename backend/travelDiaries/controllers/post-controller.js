@@ -59,17 +59,35 @@ const isValidImageSource = (image) => {
   );
 };
 
-const normalizeImages = ({ uploadedImages, image, images }) => {
-  const existingImages = parseImageList(images);
-  const nextImages = [...existingImages, ...uploadedImages]
+const isLegacyUploadUrl = (image, req) => {
+  try {
+    const url = new URL(image);
+    const requestHost = req.get("host");
+
+    return url.host === requestHost && url.pathname.startsWith("/uploads/");
+  } catch (err) {
+    return image.startsWith("/uploads/");
+  }
+};
+
+const uniqueValidImages = (images) =>
+  images
     .filter(isValidImageSource)
     .map((item) => item.trim());
 
-  if (nextImages.length) {
-    return [...new Set(nextImages)];
+const normalizeImages = ({ uploadedImages, image, images, req, allowExistingImages }) => {
+  const uploadedImageData = uniqueValidImages(uploadedImages);
+
+  if (!allowExistingImages) {
+    return [...new Set(uploadedImageData)];
   }
 
-  return isValidImageSource(image) ? [image.trim()] : [];
+  const existingImages = [...parseImageList(images), image]
+    .filter(isValidImageSource)
+    .map((item) => item.trim())
+    .filter((item) => !isLegacyUploadUrl(item, req));
+
+  return [...new Set([...existingImages, ...uploadedImageData])];
 };
 
 const isInvalidPostPayload = ({ title, description, location, images, date, user }) =>
@@ -131,6 +149,8 @@ export const addPost = async (req, res) => {
     uploadedImages: getUploadedImages(req),
     image,
     images,
+    req,
+    allowExistingImages: false,
   });
 
   if (
@@ -237,6 +257,8 @@ export const updatePost = async (req, res) => {
     uploadedImages: getUploadedImages(req),
     image,
     images,
+    req,
+    allowExistingImages: true,
   });
 
   if (isInvalidObjectId(id)) {
