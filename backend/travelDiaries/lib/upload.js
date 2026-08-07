@@ -1,25 +1,4 @@
-import fs from "fs";
 import multer from "multer";
-import path from "path";
-
-const uploadsDir = path.resolve(process.cwd(), "uploads");
-
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: uploadsDir,
-  filename: (req, file, cb) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    const basename = path
-      .basename(file.originalname, extension)
-      .replace(/[^a-z0-9]/gi, "-")
-      .toLowerCase();
-
-    cb(null, `${Date.now()}-${basename || "travel-photo"}${extension}`);
-  },
-});
 
 const imageFileFilter = (req, file, cb) => {
   if (!file.mimetype.startsWith("image/")) {
@@ -30,10 +9,11 @@ const imageFileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter: imageFileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 3 * 1024 * 1024,
+    fieldSize: 15 * 1024 * 1024,
   },
 });
 
@@ -46,7 +26,9 @@ export const uploadPostImages = (req, res, next) => {
       return res.status(400).json({
         message:
           err.code === "LIMIT_FILE_SIZE"
-            ? "Image must be 5MB or smaller."
+            ? "Each image must be 3MB or smaller."
+            : err.code === "LIMIT_FIELD_VALUE"
+            ? "Saved images are too large. Please reduce photo sizes."
             : err.code === "LIMIT_UNEXPECTED_FILE"
             ? "You can upload up to 3 travel photos."
             : err.message,

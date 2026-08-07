@@ -12,17 +12,16 @@ import User from "../models/User";
 const isInvalidObjectId = (id) => !id || !mongoose.Types.ObjectId.isValid(id);
 const MAX_POST_IMAGES = 3;
 
-const getUploadedImageUrls = (req) => {
+const fileToDataUrl = (file) =>
+  `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+
+const getUploadedImages = (req) => {
   if (req.files?.photos?.length) {
-    return req.files.photos.map(
-      (file) => `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
-    );
+    return req.files.photos.map(fileToDataUrl);
   }
 
   if (req.files?.photo?.length) {
-    return req.files.photo.map(
-      (file) => `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
-    );
+    return req.files.photo.map(fileToDataUrl);
   }
 
   return [];
@@ -129,7 +128,7 @@ export const getAllPosts = async (req, res) => {
 export const addPost = async (req, res) => {
   const { title, description, location, date, image, images, user } = req.body;
   const postImages = normalizeImages({
-    uploadedImages: getUploadedImageUrls(req),
+    uploadedImages: getUploadedImages(req),
     image,
     images,
   });
@@ -235,7 +234,7 @@ export const updatePost = async (req, res) => {
   const id = req.params.id;
   const { title, description, location, image, images } = req.body;
   const postImages = normalizeImages({
-    uploadedImages: getUploadedImageUrls(req),
+    uploadedImages: getUploadedImages(req),
     image,
     images,
   });
